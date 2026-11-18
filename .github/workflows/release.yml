@@ -1,0 +1,46 @@
+name: Publish Alarm Clock APK
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: alarm-clock-release
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build and verify release APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ALARM_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ALARM_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          export ALARM_KEYSTORE="$RUNNER_TEMP/alarm-clock.p12"
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ALARM_KEYSTORE"
+            export ALARM_KEY_PASSWORD="$KEYSTORE_PASSWORD"
+          else
+            export ALARM_KEY_PASSWORD="$(openssl rand -hex 24)"
+            keytool -genkeypair -storetype PKCS12 -keystore "$ALARM_KEYSTORE" -storepass:env ALARM_KEY_PASSWORD \
+              -alias alarm-clock -keyalg RSA -keysize 3072 -validity 10000 -dname "CN=Alarm Clock"
+          fi
+          bash scripts/build.sh
+      - name: Publish on GitHub
+        run: |
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            echo "v1.0.0 already exists. Its signed APK is preserved."
+            exit 0
+          fi
+          gh release create v1.0.0 build/alarm-clock.apk --target "$GITHUB_SHA" \
+            --title "Alarm Clock 1.0.0" \
+            --notes "Standalone alarm clock for Android 8.0+. Set one-time or weekly alarms, snooze for five minutes, and test with the screen locked. After installing, grant notifications and lock-screen alerts from the app if prompted."
