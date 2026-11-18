@@ -28,8 +28,13 @@ public final class RingActivity extends Screen {
             finish();
             return;
         }
-        setShowWhenLocked(true);
-        setTurnScreenOn(true);
+        if (android.os.Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        } else {
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        }
         LinearLayout layout = root();
         layout.setGravity(Gravity.CENTER);
         TextView time = text(android.text.format.DateFormat.getTimeFormat(this)

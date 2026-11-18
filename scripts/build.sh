@@ -25,4 +25,4 @@ zip -qj build/unaligned.apk build/dex/classes.dex
 "$tools/apksigner" sign --ks "$key_store" --ks-pass env:ALARM_KEY_PASSWORD \
   --ks-key-alias alarm-clock --out build/alarm-clock.apk build/aligned.apk
 "$tools/apksigner" verify --verbose --print-certs build/alarm-clock.apk
-"$tools/aapt2" dump badging build/alarm-clock.apk | head -n 16
+"$tools/aapt2" dump badging build/alarm-clock.apk | sed -n '1,16p'
